@@ -9,6 +9,7 @@
     "test:staking": "hardhat test test/ClimateAlertStaking.test.js",
     "test:integration": "hardhat test test/Integration.test.js",
     "test:coverage": "hardhat coverage",
+    "check-setup": "hardhat run scripts/check-setup.js --network polygonAmoy",
     "deploy:testnet": "hardhat run scripts/deploy.js --network polygonAmoy",
     "deploy:mainnet": "hardhat run scripts/deploy.js --network polygon",
     "verify": "hardhat verify --network polygon",
