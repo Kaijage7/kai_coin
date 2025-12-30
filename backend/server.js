@@ -31,11 +31,26 @@ const PORT = process.env.PORT || 3333;
 // Configuration
 const config = {
   nodeEnv: process.env.NODE_ENV || 'development',
-  databaseUrl: process.env.DATABASE_URL || 'postgresql://kai_admin:kaipass123@localhost:5433/kai_main',
-  redisUrl: process.env.REDIS_URL || 'redis://localhost:6380',
-  blockchainRpc: process.env.BLOCKCHAIN_RPC || 'http://localhost:8545',
+  // 🔴 SECURITY: No hardcoded credentials! All values must come from .env
+  databaseUrl: process.env.DATABASE_URL,
+  redisUrl: process.env.REDIS_URL,
+  blockchainRpc: process.env.BLOCKCHAIN_RPC || process.env.AMOY_RPC_URL,
   kaiTokenAddress: process.env.KAI_TOKEN_ADDRESS,
 };
+
+// Validate required environment variables
+const requiredEnvVars = ['DATABASE_URL', 'REDIS_URL'];
+const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
+
+if (missingEnvVars.length > 0) {
+  console.error('\n🔴 ERROR: Missing required environment variables:');
+  missingEnvVars.forEach(varName => {
+    console.error(`  - ${varName}`);
+  });
+  console.error('\n📝 Please update your .env file with these values.');
+  console.error('See .env.example for reference.\n');
+  process.exit(1);
+}
 
 // Middleware
 app.use(helmet());

@@ -104,6 +104,32 @@ contract KAIToken is ERC20, ERC20Burnable, Pausable, AccessControl {
     }
 
     /**
+     * @dev Direct burn from contract's own balance (for staking/escrow contracts)
+     * @param amount Exact amount to burn (no additional percentage applied)
+     * @param pillarId Pillar ID for tracking
+     * @param reason Burn reason for analytics
+     * @notice This method burns the EXACT amount specified, unlike burnForPillar
+     */
+    function directBurn(
+        uint256 amount,
+        uint8 pillarId,
+        string calldata reason
+    ) external onlyRole(BURNER_ROLE) whenNotPaused {
+        require(pillarId >= 1 && pillarId <= 7, "KAI: invalid pillar");
+        require(amount > 0, "KAI: amount is zero");
+        require(balanceOf(msg.sender) >= amount, "KAI: insufficient balance");
+
+        // Burn exact amount from caller (staking contract)
+        _burn(msg.sender, amount);
+
+        // Update tracking
+        totalBurned += amount;
+        burnedByAddress[msg.sender] += amount;
+
+        emit PillarBurn(msg.sender, pillarId, amount, reason);
+    }
+
+    /**
      * @dev Oracle-triggered mint for verified impact (e.g., disaster relief, insurance payout)
      * @param to Recipient address
      * @param amount Amount to mint

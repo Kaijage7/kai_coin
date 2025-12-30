@@ -43,7 +43,8 @@ contract KAI_DAO is ReentrancyGuard, AccessControl {
 
     // Governance parameters (hard-coded)
     uint256 public constant PROPOSAL_THRESHOLD = 10_000 * 10**18; // 10k KAI to propose
-    uint256 public constant VOTING_PERIOD = 7 days; // Sacred week
+    uint256 public constant VOTING_PERIOD = 7 days; // Sacred week (in seconds)
+    uint256 public constant VOTING_PERIOD_BLOCKS = 302_400; // 7 days on Polygon (~2s blocks)
     uint256 public constant TIMELOCK_DELAY = 2 days; // 48-hour execution delay
     uint256 public constant QUORUM_PERCENTAGE = 4; // 4% of supply must vote
     uint256 public constant QUADRATIC_MULTIPLIER = 1414; // sqrt(2) * 1000 for quadratic voting
@@ -160,11 +161,14 @@ contract KAI_DAO is ReentrancyGuard, AccessControl {
             kaiToken.balanceOf(msg.sender) >= PROPOSAL_THRESHOLD,
             "DAO: insufficient KAI balance"
         );
+        // ✅ FIX: Use timestamp for cooldown, not block.number
         require(
-            proposerLastProposal[msg.sender] + VOTING_PERIOD < block.number,
+            block.timestamp >= proposerLastProposal[msg.sender] + VOTING_PERIOD,
             "DAO: proposal cooldown active"
         );
         require(bytes(title).length > 0 && bytes(description).length > 0, "DAO: empty proposal");
+        // ✅ FIX: Validate target address for security
+        require(target != address(0) || callData.length == 0, "DAO: invalid target");
 
         // Get corresponding seal for proposal type
         bytes32 seal = _getSealForType(proposalType);
@@ -182,10 +186,12 @@ contract KAI_DAO is ReentrancyGuard, AccessControl {
         newProposal.callData = callData;
         newProposal.value = value;
         newProposal.startBlock = block.number;
-        newProposal.endBlock = block.number + (VOTING_PERIOD / 12); // ~7 days in blocks
+        // ✅ FIX: Use proper block count for Polygon (~2 second blocks)
+        newProposal.endBlock = block.number + VOTING_PERIOD_BLOCKS;
         newProposal.status = ProposalStatus.Active;
 
-        proposerLastProposal[msg.sender] = block.number;
+        // ✅ FIX: Store timestamp for cooldown tracking
+        proposerLastProposal[msg.sender] = block.timestamp;
 
         emit ProposalCreated(proposalCount, msg.sender, proposalType, title);
 
@@ -213,9 +219,13 @@ contract KAI_DAO is ReentrancyGuard, AccessControl {
         uint256 balance = kaiToken.balanceOf(msg.sender);
         require(balance > 0, "DAO: no voting power");
 
-        // Quadratic voting: weight = sqrt(balance) * multiplier
+        // ✅ FIX: Quadratic voting with overflow protection
         // Prevents whales from dominating (1M tokens = ~1414 votes, not 1M votes)
-        uint256 weight = (_sqrt(balance) * QUADRATIC_MULTIPLIER) / 1000;
+        uint256 sqrtBalance = _sqrt(balance);
+        require(sqrtBalance > 0, "DAO: invalid sqrt");
+
+        uint256 weight = (sqrtBalance * QUADRATIC_MULTIPLIER) / 1000;
+        require(weight > 0, "DAO: weight too small");
 
         proposal.hasVoted[msg.sender] = true;
         proposal.voteWeight[msg.sender] = weight;
@@ -283,9 +293,30 @@ contract KAI_DAO is ReentrancyGuard, AccessControl {
         proposal.executed = true;
         proposal.status = ProposalStatus.Executed;
 
-        // Execute proposal
-        (bool success, ) = proposal.target.call{value: proposal.value}(proposal.callData);
-        require(success, "DAO: execution failed");
+        // ✅ FIX: Execute proposal with proper validation and error handling
+        // Validate target is a contract (or address(0) for value transfer only)
+        if (proposal.target != address(0)) {
+            uint256 codeSize;
+            assembly {
+                codeSize := extcodesize(proposal.target)
+            }
+            require(codeSize > 0, "DAO: target not a contract");
+        }
+
+        // Execute with return data capture for better debugging
+        (bool success, bytes memory returnData) = proposal.target.call{value: proposal.value}(proposal.callData);
+
+        if (!success) {
+            // If there's return data, it's a revert message
+            if (returnData.length > 0) {
+                // Bubble up the revert reason
+                assembly {
+                    revert(add(32, returnData), mload(returnData))
+                }
+            } else {
+                revert("DAO: execution failed");
+            }
+        }
 
         emit ProposalExecuted(proposalId);
     }

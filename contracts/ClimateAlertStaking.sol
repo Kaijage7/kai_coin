@@ -166,8 +166,12 @@ contract ClimateAlertStaking is ReentrancyGuard, AccessControl, Pausable {
                 // Calculate burn amount (10% of stake)
                 uint256 burnAmount = (userStake.amount * ALERT_BURN_RATE) / 10000;
 
-                // Execute burn via KAI token (requires BURNER_ROLE)
-                kaiToken.burn(burnAmount);
+                // Ensure burn amount doesn't exceed stake (safety check)
+                require(burnAmount <= userStake.amount, "ClimateStake: burn exceeds stake");
+
+                // ✅ FIX: Use directBurn() to burn exact amount from staking contract
+                // Pillar 6 = Disaster/Climate alerts
+                kaiToken.directBurn(burnAmount, 6, "Climate alert triggered");
 
                 // Update user stats
                 userStake.amount -= burnAmount;

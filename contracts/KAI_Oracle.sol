@@ -159,8 +159,9 @@ contract KAI_Oracle is ReentrancyGuard, AccessControl, Pausable {
         require(recipients.length > 0, "Oracle: no recipients");
         require(bytes(region).length > 0, "Oracle: empty region");
 
-        // Rate limiting check
-        uint256 today = block.timestamp / 1 days;
+        // ✅ FIX: Rate limiting check (normalize to start of day UTC)
+        // Using modulo to get consistent day boundary (midnight UTC)
+        uint256 today = block.timestamp - (block.timestamp % 1 days);
         require(
             dailyAlertCount[region][today] < MAX_ALERTS_PER_DAY,
             "Oracle: rate limit exceeded"
