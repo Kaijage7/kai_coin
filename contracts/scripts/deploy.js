@@ -50,9 +50,10 @@ async function main() {
   // Guardian council (3-7 guardians for multi-sig security)
   const guardians = [
     deployer.address,
-    // Add additional guardian addresses here for production
-    // e.g., "0x742d35Cc6634C0532925a3b844Bc454e4438f44e",
-    // e.g., "0x2546BcD3c84621e976D8185a91A922aE77ECEc30"
+    // For testnet/local, using additional addresses as guardians
+    "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", // Test guardian #1
+    "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"  // Test guardian #2
+    // For production, replace with real guardian addresses
   ];
 
   const KAI_DAO = await hre.ethers.getContractFactory("KAI_DAO");
@@ -152,7 +153,7 @@ async function main() {
   const fs = require('fs');
   const deploymentInfo = {
     network: hre.network.name,
-    chainId: (await hre.ethers.provider.getNetwork()).chainId,
+    chainId: Number((await hre.ethers.provider.getNetwork()).chainId),
     deployer: deployer.address,
     timestamp: new Date().toISOString(),
     contracts: {
