@@ -1,0 +1,455 @@
+# KAI Coin - Pillar Microservices Deployments
+# One service per pillar for isolated scaling
+
+---
+# ============================================
+# PILLAR 1: GOVERNANCE SERVICE
+# ============================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kai-governance
+  namespace: kai-production
+  labels:
+    app: kai-governance
+    pillar: governance
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: kai-governance
+  template:
+    metadata:
+      labels:
+        app: kai-governance
+        pillar: governance
+    spec:
+      containers:
+      - name: kai-governance
+        image: kai-coin/governance-service:latest
+        ports:
+        - containerPort: 8081
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1Gi"
+        env:
+        - name: SERVICE_NAME
+          value: "governance"
+        - name: KAFKA_TOPIC
+          value: "kai.governance.events"
+        envFrom:
+        - secretRef:
+            name: kai-secrets
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kai-governance
+  namespace: kai-production
+spec:
+  ports:
+  - port: 80
+    targetPort: 8081
+  selector:
+    app: kai-governance
+---
+# ============================================
+# PILLAR 2: LAW SERVICE
+# ============================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kai-law
+  namespace: kai-production
+  labels:
+    app: kai-law
+    pillar: law
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: kai-law
+  template:
+    metadata:
+      labels:
+        app: kai-law
+        pillar: law
+    spec:
+      containers:
+      - name: kai-law
+        image: kai-coin/law-service:latest
+        ports:
+        - containerPort: 8082
+        resources:
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
+          limits:
+            cpu: "1000m"
+            memory: "1Gi"
+        env:
+        - name: SERVICE_NAME
+          value: "law"
+        - name: KAFKA_TOPIC
+          value: "kai.law.events"
+        - name: IPFS_GATEWAY
+          value: "http://kai-ipfs:5001"
+        envFrom:
+        - secretRef:
+            name: kai-secrets
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kai-law
+  namespace: kai-production
+spec:
+  ports:
+  - port: 80
+    targetPort: 8082
+  selector:
+    app: kai-law
+---
+# ============================================
+# PILLAR 3: AGRICULTURE SERVICE
+# ============================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kai-agriculture
+  namespace: kai-production
+  labels:
+    app: kai-agriculture
+    pillar: agriculture
+spec:
+  replicas: 10  # Higher scale for farmer interactions
+  selector:
+    matchLabels:
+      app: kai-agriculture
+  template:
+    metadata:
+      labels:
+        app: kai-agriculture
+        pillar: agriculture
+    spec:
+      containers:
+      - name: kai-agriculture
+        image: kai-coin/agriculture-service:latest
+        ports:
+        - containerPort: 8083
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+          limits:
+            cpu: "2000m"
+            memory: "2Gi"
+        env:
+        - name: SERVICE_NAME
+          value: "agriculture"
+        - name: KAFKA_TOPIC
+          value: "kai.agriculture.events"
+        - name: ORACLE_ENDPOINT
+          value: "http://kai-oracle:8090"
+        envFrom:
+        - secretRef:
+            name: kai-secrets
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kai-agriculture
+  namespace: kai-production
+spec:
+  ports:
+  - port: 80
+    targetPort: 8083
+  selector:
+    app: kai-agriculture
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: kai-agriculture-hpa
+  namespace: kai-production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: kai-agriculture
+  minReplicas: 10
+  maxReplicas: 200
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+---
+# ============================================
+# PILLAR 4: HEALTH SERVICE
+# ============================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kai-health
+  namespace: kai-production
+  labels:
+    app: kai-health
+    pillar: health
+spec:
+  replicas: 8
+  selector:
+    matchLabels:
+      app: kai-health
+  template:
+    metadata:
+      labels:
+        app: kai-health
+        pillar: health
+    spec:
+      containers:
+      - name: kai-health
+        image: kai-coin/health-service:latest
+        ports:
+        - containerPort: 8084
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+          limits:
+            cpu: "2000m"
+            memory: "2Gi"
+        env:
+        - name: SERVICE_NAME
+          value: "health"
+        - name: KAFKA_TOPIC
+          value: "kai.health.events"
+        envFrom:
+        - secretRef:
+            name: kai-secrets
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kai-health
+  namespace: kai-production
+spec:
+  ports:
+  - port: 80
+    targetPort: 8084
+  selector:
+    app: kai-health
+---
+# ============================================
+# PILLAR 5: AI SERVICE
+# ============================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kai-ai
+  namespace: kai-production
+  labels:
+    app: kai-ai
+    pillar: ai
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: kai-ai
+  template:
+    metadata:
+      labels:
+        app: kai-ai
+        pillar: ai
+    spec:
+      containers:
+      - name: kai-ai
+        image: kai-coin/ai-service:latest
+        ports:
+        - containerPort: 8085
+        resources:
+          requests:
+            cpu: "1000m"
+            memory: "2Gi"
+            nvidia.com/gpu: "1"  # GPU for inference
+          limits:
+            cpu: "4000m"
+            memory: "8Gi"
+            nvidia.com/gpu: "1"
+        env:
+        - name: SERVICE_NAME
+          value: "ai"
+        - name: KAFKA_TOPIC
+          value: "kai.ai.events"
+        - name: MLFLOW_TRACKING_URI
+          value: "http://kai-mlflow:5000"
+        - name: MODEL_STORAGE
+          value: "s3://kai-models"
+        envFrom:
+        - secretRef:
+            name: kai-secrets
+      tolerations:
+      - key: "nvidia.com/gpu"
+        operator: "Exists"
+        effect: "NoSchedule"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kai-ai
+  namespace: kai-production
+spec:
+  ports:
+  - port: 80
+    targetPort: 8085
+  selector:
+    app: kai-ai
+---
+# ============================================
+# PILLAR 6: DISASTER SERVICE
+# ============================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kai-disaster
+  namespace: kai-production
+  labels:
+    app: kai-disaster
+    pillar: disaster
+spec:
+  replicas: 15  # High availability for alerts
+  selector:
+    matchLabels:
+      app: kai-disaster
+  template:
+    metadata:
+      labels:
+        app: kai-disaster
+        pillar: disaster
+    spec:
+      containers:
+      - name: kai-disaster
+        image: kai-coin/disaster-service:latest
+        ports:
+        - containerPort: 8086
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "512Mi"
+          limits:
+            cpu: "2000m"
+            memory: "2Gi"
+        env:
+        - name: SERVICE_NAME
+          value: "disaster"
+        - name: KAFKA_TOPIC
+          value: "kai.disaster.alerts"
+        - name: ALERT_PRIORITY
+          value: "critical"
+        - name: ORACLE_ENDPOINT
+          value: "http://kai-oracle:8090"
+        envFrom:
+        - secretRef:
+            name: kai-secrets
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kai-disaster
+  namespace: kai-production
+spec:
+  ports:
+  - port: 80
+    targetPort: 8086
+  selector:
+    app: kai-disaster
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: kai-disaster-hpa
+  namespace: kai-production
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: kai-disaster
+  minReplicas: 15
+  maxReplicas: 500  # Scale rapidly during emergencies
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 60  # Lower threshold for faster scaling
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 0  # Immediate scaling
+      policies:
+      - type: Percent
+        value: 200
+        periodSeconds: 30
+---
+# ============================================
+# PILLAR 7: CLIMATE SERVICE
+# ============================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kai-climate
+  namespace: kai-production
+  labels:
+    app: kai-climate
+    pillar: climate
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: kai-climate
+  template:
+    metadata:
+      labels:
+        app: kai-climate
+        pillar: climate
+    spec:
+      containers:
+      - name: kai-climate
+        image: kai-coin/climate-service:latest
+        ports:
+        - containerPort: 8087
+        resources:
+          requests:
+            cpu: "500m"
+            memory: "1Gi"
+          limits:
+            cpu: "2000m"
+            memory: "4Gi"
+        env:
+        - name: SERVICE_NAME
+          value: "climate"
+        - name: KAFKA_TOPIC
+          value: "kai.climate.events"
+        - name: INFLUXDB_URL
+          value: "http://kai-influxdb:8086"
+        envFrom:
+        - secretRef:
+            name: kai-secrets
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kai-climate
+  namespace: kai-production
+spec:
+  ports:
+  - port: 80
+    targetPort: 8087
+  selector:
+    app: kai-climate

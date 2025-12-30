@@ -1,0 +1,25 @@
+# KAI Coin - Kubernetes Namespace Configuration
+# Production-Grade Infrastructure for 2 Billion Users
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kai-production
+  labels:
+    name: kai-production
+    app.kubernetes.io/name: kai-coin
+    app.kubernetes.io/version: "1.0.0"
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kai-staging
+  labels:
+    name: kai-staging
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kai-monitoring
+  labels:
+    name: kai-monitoring

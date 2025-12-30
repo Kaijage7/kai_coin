@@ -1,0 +1,39 @@
+{
+  "name": "kai-coin",
+  "version": "1.0.0",
+  "description": "KAI - Africa Resilience Token with 7 Pillars of Redemption",
+  "main": "index.js",
+  "scripts": {
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:local": "hardhat run scripts/deploy.js --network localhost",
+    "deploy:mumbai": "hardhat run scripts/deploy.js --network mumbai",
+    "deploy:polygon": "hardhat run scripts/deploy.js --network polygon",
+    "verify": "hardhat verify",
+    "coverage": "hardhat coverage",
+    "clean": "hardhat clean"
+  },
+  "keywords": [
+    "blockchain",
+    "africa",
+    "resilience",
+    "climate",
+    "disaster",
+    "agriculture",
+    "health",
+    "governance",
+    "ai",
+    "defi"
+  ],
+  "author": "KAI Foundation",
+  "license": "MIT",
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@openzeppelin/contracts": "^5.0.0",
+    "hardhat": "^2.19.0",
+    "dotenv": "^16.3.1"
+  },
+  "dependencies": {
+    "@chainlink/contracts": "^0.8.0"
+  }
+}

@@ -1,0 +1,121 @@
+# KAI Coin - Local Development Stack
+# Lightweight version for development and testing
+
+version: '3.9'
+
+services:
+  # ============================================
+  # PostgreSQL Database
+  # ============================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: kai-postgres
+    environment:
+      POSTGRES_USER: kai_admin
+      POSTGRES_PASSWORD: kaipass123
+      POSTGRES_DB: kai_main
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5433:5432"  # Use 5433 to avoid conflict
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - kai-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kai_admin -d kai_main"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # Redis Cache
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: kai-redis
+    ports:
+      - "6380:6379"  # Use 6380 to avoid conflict
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    networks:
+      - kai-network
+    restart: unless-stopped
+
+  # ============================================
+  # MongoDB (Documents/Evidence)
+  # ============================================
+  mongodb:
+    image: mongo:7
+    container_name: kai-mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: kai_admin
+      MONGO_INITDB_ROOT_PASSWORD: kaimongo123
+      MONGO_INITDB_DATABASE: kai_documents
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb-data:/data/db
+    networks:
+      - kai-network
+    restart: unless-stopped
+
+  # ============================================
+  # IPFS Node
+  # ============================================
+  ipfs:
+    image: ipfs/kubo:latest
+    container_name: kai-ipfs
+    ports:
+      - "4001:4001"
+      - "5002:5001"  # Use 5002 for IPFS API
+      - "8083:8080"  # Use 8083 for IPFS Gateway
+    volumes:
+      - ipfs-data:/data/ipfs
+    networks:
+      - kai-network
+    restart: unless-stopped
+
+  # ============================================
+  # Nginx Reverse Proxy
+  # ============================================
+  nginx:
+    image: nginx:alpine
+    container_name: kai-nginx
+    ports:
+      - "8088:80"   # Use 8088 for HTTP to avoid conflict
+      - "8443:443"  # Use 8443 for HTTPS to avoid conflict
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - kai-network
+    restart: unless-stopped
+
+  # ============================================
+  # Adminer (Database Management UI)
+  # ============================================
+  adminer:
+    image: adminer:latest
+    container_name: kai-adminer
+    ports:
+      - "8082:8080"  # Use 8082 to avoid conflict
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    networks:
+      - kai-network
+    restart: unless-stopped
+
+networks:
+  kai-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  redis-data:
+  mongodb-data:
+  ipfs-data:
