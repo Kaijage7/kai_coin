@@ -1,4 +1,5 @@
 require("@nomicfoundation/hardhat-toolbox");
+require("@openzeppelin/hardhat-upgrades");
 require("dotenv").config();
 
 // ✅ FIX: Validate private key and use development fallback if invalid
@@ -17,7 +18,7 @@ const POLYGONSCAN_API_KEY = process.env.POLYGONSCAN_API_KEY || "";
 
 module.exports = {
   solidity: {
-    version: "0.8.20",
+    version: "0.8.24",
     settings: {
       viaIR: true,
       optimizer: {

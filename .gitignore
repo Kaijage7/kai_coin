@@ -40,3 +40,8 @@ yarn-error.log*
 
 # Deployment info (sensitive)
 deployment-*.json
+
+# Hardhat build artifacts (regeneratable)
+artifacts/
+cache/
+typechain-types/
