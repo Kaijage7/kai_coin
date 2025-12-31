@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
-import "../core/KaiToken.sol";
+import "../KAIToken.sol";
 
 /**
  * @title KaiLaw
@@ -23,7 +23,7 @@ contract KaiLaw is AccessControl, ReentrancyGuard, Pausable {
     bytes32 public constant JUDGE_ROLE = keccak256("JUDGE_ROLE");
     bytes32 public constant ENFORCER_ROLE = keccak256("ENFORCER_ROLE");
 
-    KaiToken public immutable kaiToken;
+    KAIToken public immutable kaiToken;
 
     // Fee configuration
     uint256 public evidenceSubmissionFee = 10 * 10**18; // 10 KAI
@@ -144,7 +144,7 @@ contract KaiLaw is AccessControl, ReentrancyGuard, Pausable {
         require(_kaiToken != address(0), "Invalid token");
         require(admin != address(0), "Invalid admin");
 
-        kaiToken = KaiToken(_kaiToken);
+        kaiToken = KAIToken(_kaiToken);
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(AUDITOR_ROLE, admin);

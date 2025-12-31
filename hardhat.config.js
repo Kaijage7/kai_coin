@@ -1,7 +1,18 @@
 require("@nomicfoundation/hardhat-toolbox");
 require("dotenv").config();
 
-const PRIVATE_KEY = process.env.PRIVATE_KEY || "0x0000000000000000000000000000000000000000000000000000000000000001";
+// ✅ FIX: Validate private key and use development fallback if invalid
+const PRIVATE_KEY_ENV = process.env.PRIVATE_KEY || "";
+const isValidPrivateKey = PRIVATE_KEY_ENV.length === 66 && PRIVATE_KEY_ENV.startsWith("0x");
+const PRIVATE_KEY = isValidPrivateKey
+  ? PRIVATE_KEY_ENV
+  : "0x0000000000000000000000000000000000000000000000000000000000000001"; // Development fallback
+
+if (!isValidPrivateKey && process.env.NODE_ENV !== "development") {
+  console.warn("\n⚠️  WARNING: Invalid or missing PRIVATE_KEY in .env");
+  console.warn("Using development fallback key. Run: node scripts/generate-wallet.js\n");
+}
+
 const POLYGONSCAN_API_KEY = process.env.POLYGONSCAN_API_KEY || "";
 
 module.exports = {

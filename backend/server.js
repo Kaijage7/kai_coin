@@ -66,6 +66,12 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
+// ============================================
+// Payment & Revenue API Routes
+// ============================================
+const apiRoutes = require('./routes/api');
+app.use('/api', apiRoutes);
+
 // Database connection
 const pgPool = new Pool({
   connectionString: config.databaseUrl,

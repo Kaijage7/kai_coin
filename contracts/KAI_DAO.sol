@@ -295,28 +295,18 @@ contract KAI_DAO is ReentrancyGuard, AccessControl {
 
         // ✅ FIX: Execute proposal with proper validation and error handling
         // Validate target is a contract (or address(0) for value transfer only)
-        if (proposal.target != address(0)) {
+        address target = proposal.target;
+        if (target != address(0)) {
             uint256 codeSize;
             assembly {
-                codeSize := extcodesize(proposal.target)
+                codeSize := extcodesize(target)
             }
             require(codeSize > 0, "DAO: target not a contract");
         }
 
-        // Execute with return data capture for better debugging
-        (bool success, bytes memory returnData) = proposal.target.call{value: proposal.value}(proposal.callData);
-
-        if (!success) {
-            // If there's return data, it's a revert message
-            if (returnData.length > 0) {
-                // Bubble up the revert reason
-                assembly {
-                    revert(add(32, returnData), mload(returnData))
-                }
-            } else {
-                revert("DAO: execution failed");
-            }
-        }
+        // Execute proposal call
+        (bool success, ) = proposal.target.call{value: proposal.value}(proposal.callData);
+        require(success, "DAO: execution failed");
 
         emit ProposalExecuted(proposalId);
     }

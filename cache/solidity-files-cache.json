@@ -1,50 +1,6 @@
 {
   "_format": "hh-sol-cache-2",
   "files": {
-    "/home/kaijage/model/kai_coin/contracts/core/KaiToken.sol": {
-      "lastModificationDate": 1767000299776,
-      "contentHash": "1a44a80d289585f0b947ab4af715f29a",
-      "sourceName": "contracts/core/KaiToken.sol",
-      "solcConfig": {
-        "version": "0.8.20",
-        "settings": {
-          "viaIR": true,
-          "optimizer": {
-            "enabled": true,
-            "runs": 200
-          },
-          "evmVersion": "paris",
-          "outputSelection": {
-            "*": {
-              "*": [
-                "abi",
-                "evm.bytecode",
-                "evm.deployedBytecode",
-                "evm.methodIdentifiers",
-                "metadata"
-              ],
-              "": [
-                "ast"
-              ]
-            }
-          }
-        }
-      },
-      "imports": [
-        "@openzeppelin/contracts/token/ERC20/ERC20.sol",
-        "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol",
-        "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol",
-        "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol",
-        "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol",
-        "@openzeppelin/contracts/access/AccessControl.sol"
-      ],
-      "versionPragmas": [
-        "^0.8.20"
-      ],
-      "artifacts": [
-        "KaiToken"
-      ]
-    },
     "/home/kaijage/model/kai_coin/node_modules/@openzeppelin/contracts/access/AccessControl.sol": {
       "lastModificationDate": 1767000050804,
       "contentHash": "d0e2c05f09a3aea7cd299bbd4a435ee2",
@@ -1334,8 +1290,8 @@
       ]
     },
     "/home/kaijage/model/kai_coin/contracts/pillars/KaiLaw.sol": {
-      "lastModificationDate": 1766999269931,
-      "contentHash": "e0270b63f38185271e16e3e96155b9bc",
+      "lastModificationDate": 1767095517511,
+      "contentHash": "cb07b8bd5fe657aae2f88e7657b4650a",
       "sourceName": "contracts/pillars/KaiLaw.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -1366,7 +1322,7 @@
         "@openzeppelin/contracts/access/AccessControl.sol",
         "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
         "@openzeppelin/contracts/utils/Pausable.sol",
-        "../core/KaiToken.sol"
+        "../KAIToken.sol"
       ],
       "versionPragmas": [
         "^0.8.20"
@@ -1413,8 +1369,8 @@
       ]
     },
     "/home/kaijage/model/kai_coin/contracts/pillars/KaiHealth.sol": {
-      "lastModificationDate": 1766999042744,
-      "contentHash": "45b5d78f49e70fe605e364d9457fce4f",
+      "lastModificationDate": 1767095517524,
+      "contentHash": "91fedcb1436208898cfe784361fe7e30",
       "sourceName": "contracts/pillars/KaiHealth.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -1445,7 +1401,7 @@
         "@openzeppelin/contracts/access/AccessControl.sol",
         "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
         "@openzeppelin/contracts/utils/Pausable.sol",
-        "../core/KaiToken.sol"
+        "../KAIToken.sol"
       ],
       "versionPragmas": [
         "^0.8.20"
@@ -1455,8 +1411,8 @@
       ]
     },
     "/home/kaijage/model/kai_coin/contracts/pillars/KaiDisaster.sol": {
-      "lastModificationDate": 1766999036495,
-      "contentHash": "dd5dcef01d9555acbe2c3a21e769a28e",
+      "lastModificationDate": 1767095517522,
+      "contentHash": "65c74f94bfdd371abd577875409cf247",
       "sourceName": "contracts/pillars/KaiDisaster.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -1487,7 +1443,7 @@
         "@openzeppelin/contracts/access/AccessControl.sol",
         "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
         "@openzeppelin/contracts/utils/Pausable.sol",
-        "../core/KaiToken.sol"
+        "../KAIToken.sol"
       ],
       "versionPragmas": [
         "^0.8.20"
@@ -1497,8 +1453,8 @@
       ]
     },
     "/home/kaijage/model/kai_coin/contracts/pillars/KaiClimate.sol": {
-      "lastModificationDate": 1766999288119,
-      "contentHash": "1ee507d6caeb310d0b051a25bbfcdfab",
+      "lastModificationDate": 1767095517515,
+      "contentHash": "b200c5d8043d54f70d1805ce6c01e82b",
       "sourceName": "contracts/pillars/KaiClimate.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -1529,7 +1485,7 @@
         "@openzeppelin/contracts/access/AccessControl.sol",
         "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
         "@openzeppelin/contracts/utils/Pausable.sol",
-        "../core/KaiToken.sol"
+        "../KAIToken.sol"
       ],
       "versionPragmas": [
         "^0.8.20"
@@ -1539,8 +1495,8 @@
       ]
     },
     "/home/kaijage/model/kai_coin/contracts/pillars/KaiAgriculture.sol": {
-      "lastModificationDate": 1766999040276,
-      "contentHash": "314f6bfbf6ee089925b3c1f8666442fe",
+      "lastModificationDate": 1767095517527,
+      "contentHash": "ac698c4028132ec77d8f214c7827d43b",
       "sourceName": "contracts/pillars/KaiAgriculture.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -1571,7 +1527,7 @@
         "@openzeppelin/contracts/access/AccessControl.sol",
         "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
         "@openzeppelin/contracts/utils/Pausable.sol",
-        "../core/KaiToken.sol"
+        "../KAIToken.sol"
       ],
       "versionPragmas": [
         "^0.8.20"
@@ -1581,8 +1537,8 @@
       ]
     },
     "/home/kaijage/model/kai_coin/contracts/pillars/KaiAI.sol": {
-      "lastModificationDate": 1766999265029,
-      "contentHash": "0ee51705f01bd1b0cb866f711efcfeda",
+      "lastModificationDate": 1767095517518,
+      "contentHash": "59c2c98a283e91410a1ccd0ed67600b0",
       "sourceName": "contracts/pillars/KaiAI.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -1613,7 +1569,7 @@
         "@openzeppelin/contracts/access/AccessControl.sol",
         "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
         "@openzeppelin/contracts/utils/Pausable.sol",
-        "../core/KaiToken.sol"
+        "../KAIToken.sol"
       ],
       "versionPragmas": [
         "^0.8.20"
@@ -1623,8 +1579,8 @@
       ]
     },
     "/home/kaijage/model/kai_coin/contracts/governance/KaiGovernance.sol": {
-      "lastModificationDate": 1766999294997,
-      "contentHash": "b4eec1bda28ba3afe9533ff6d2f9e155",
+      "lastModificationDate": 1767095465544,
+      "contentHash": "200e25ed2cf214359491770e18db79d2",
       "sourceName": "contracts/governance/KaiGovernance.sol",
       "solcConfig": {
         "version": "0.8.20",
@@ -1655,13 +1611,224 @@
         "@openzeppelin/contracts/access/AccessControl.sol",
         "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
         "@openzeppelin/contracts/utils/Pausable.sol",
-        "../core/KaiToken.sol"
+        "../KAIToken.sol"
       ],
       "versionPragmas": [
         "^0.8.20"
       ],
       "artifacts": [
         "KaiGovernance"
+      ]
+    },
+    "/home/kaijage/model/kai_coin/contracts/ClimateAlertStaking.sol": {
+      "lastModificationDate": 1767096477232,
+      "contentHash": "10baae40738a1bfcebf6cf56ce084b2d",
+      "sourceName": "contracts/ClimateAlertStaking.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "viaIR": true,
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
+        "@openzeppelin/contracts/access/AccessControl.sol",
+        "@openzeppelin/contracts/utils/Pausable.sol",
+        "./KAIToken.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "ClimateAlertStaking"
+      ]
+    },
+    "/home/kaijage/model/kai_coin/contracts/KAIToken.sol": {
+      "lastModificationDate": 1767093252258,
+      "contentHash": "53f8aa8b1e26dc47a72d0c960dfa4066",
+      "sourceName": "contracts/KAIToken.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "viaIR": true,
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/token/ERC20/ERC20.sol",
+        "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol",
+        "@openzeppelin/contracts/utils/Pausable.sol",
+        "@openzeppelin/contracts/access/AccessControl.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "KAIToken"
+      ]
+    },
+    "/home/kaijage/model/kai_coin/contracts/KAI_Oracle.sol": {
+      "lastModificationDate": 1767093319160,
+      "contentHash": "12ecdb457893f9a7fb7a1eb6201bfdab",
+      "sourceName": "contracts/KAI_Oracle.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "viaIR": true,
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
+        "@openzeppelin/contracts/access/AccessControl.sol",
+        "@openzeppelin/contracts/utils/Pausable.sol",
+        "./ClimateAlertStaking.sol",
+        "./KAIToken.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "KAI_Oracle"
+      ]
+    },
+    "/home/kaijage/model/kai_coin/contracts/KAI_DAO.sol": {
+      "lastModificationDate": 1767095669938,
+      "contentHash": "99cff3edd5753b6c09f401c0a3871a7b",
+      "sourceName": "contracts/KAI_DAO.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "viaIR": true,
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
+        "@openzeppelin/contracts/utils/math/Math.sol",
+        "@openzeppelin/contracts/access/AccessControl.sol",
+        "./KAIToken.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "KAI_DAO"
+      ]
+    },
+    "/home/kaijage/model/kai_coin/contracts/KAIRevenue.sol": {
+      "lastModificationDate": 1767097075007,
+      "contentHash": "54dcc2ed63b0da7c50c694da3dfbc1c1",
+      "sourceName": "contracts/KAIRevenue.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "viaIR": true,
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "evmVersion": "paris",
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [
+        "@openzeppelin/contracts/access/AccessControl.sol",
+        "@openzeppelin/contracts/utils/ReentrancyGuard.sol",
+        "@openzeppelin/contracts/utils/Pausable.sol",
+        "./KAIToken.sol"
+      ],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "KAIRevenue"
       ]
     }
   }

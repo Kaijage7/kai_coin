@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
-import "../core/KaiToken.sol";
+import "../KAIToken.sol";
 
 /**
  * @title KaiAgriculture
@@ -22,7 +22,7 @@ contract KaiAgriculture is AccessControl, ReentrancyGuard, Pausable {
     bytes32 public constant ORACLE_ROLE = keccak256("ORACLE_ROLE");
     bytes32 public constant VERIFIER_ROLE = keccak256("VERIFIER_ROLE");
 
-    KaiToken public immutable kaiToken;
+    KAIToken public immutable kaiToken;
 
     // Insurance configuration
     uint256 public basePremiumRate = 500; // 5% in basis points
@@ -110,7 +110,7 @@ contract KaiAgriculture is AccessControl, ReentrancyGuard, Pausable {
         require(_kaiToken != address(0), "Invalid token");
         require(admin != address(0), "Invalid admin");
 
-        kaiToken = KaiToken(_kaiToken);
+        kaiToken = KAIToken(_kaiToken);
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(ORACLE_ROLE, admin);

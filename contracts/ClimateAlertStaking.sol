@@ -95,6 +95,13 @@ contract ClimateAlertStaking is ReentrancyGuard, AccessControl, Pausable {
             "ClimateStake: insufficient balance"
         );
 
+        // ✅ FIX: Check approval before attempting transfer
+        uint256 currentAllowance = kaiToken.allowance(msg.sender, address(this));
+        require(
+            currentAllowance >= amount,
+            "ClimateStake: insufficient allowance. Call approve() first"
+        );
+
         // Transfer tokens to contract
         require(
             kaiToken.transferFrom(msg.sender, address(this), amount),
@@ -243,6 +250,29 @@ contract ClimateAlertStaking is ReentrancyGuard, AccessControl, Pausable {
         )
     {
         return (totalStaked, totalUsers, totalAlertsSent, alertCount);
+    }
+
+    /**
+     * @dev Check if user has sufficient allowance to stake
+     * @param user Address to check
+     * @param amount Amount they want to stake
+     * @return hasAllowance True if user has approved enough tokens
+     * @return currentAllowance Current allowance amount
+     * @return required Required allowance amount
+     */
+    function checkAllowance(address user, uint256 amount)
+        external
+        view
+        returns (
+            bool hasAllowance,
+            uint256 currentAllowance,
+            uint256 required
+        )
+    {
+        currentAllowance = kaiToken.allowance(user, address(this));
+        required = amount;
+        hasAllowance = currentAllowance >= amount;
+        return (hasAllowance, currentAllowance, required);
     }
 
     /**

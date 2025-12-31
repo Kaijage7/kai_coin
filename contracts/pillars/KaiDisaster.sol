@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
-import "../core/KaiToken.sol";
+import "../KAIToken.sol";
 
 /**
  * @title KaiDisaster
@@ -22,7 +22,7 @@ contract KaiDisaster is AccessControl, ReentrancyGuard, Pausable {
     bytes32 public constant ORACLE_ROLE = keccak256("ORACLE_ROLE");
     bytes32 public constant RESPONDER_ROLE = keccak256("RESPONDER_ROLE");
 
-    KaiToken public immutable kaiToken;
+    KAIToken public immutable kaiToken;
 
     // Subscription tiers
     uint256 public basicSubscriptionFee = 10 * 10**18; // 10 KAI
@@ -88,7 +88,7 @@ contract KaiDisaster is AccessControl, ReentrancyGuard, Pausable {
         require(_kaiToken != address(0), "Invalid token");
         require(admin != address(0), "Invalid admin");
 
-        kaiToken = KaiToken(_kaiToken);
+        kaiToken = KAIToken(_kaiToken);
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(ORACLE_ROLE, admin);

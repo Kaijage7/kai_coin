@@ -4,7 +4,7 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
-import "../core/KaiToken.sol";
+import "../KAIToken.sol";
 
 /**
  * @title KaiGovernance
@@ -22,7 +22,7 @@ contract KaiGovernance is AccessControl, ReentrancyGuard, Pausable {
     bytes32 public constant EXECUTOR_ROLE = keccak256("EXECUTOR_ROLE");
     bytes32 public constant GUARDIAN_ROLE = keccak256("GUARDIAN_ROLE");
 
-    KaiToken public immutable kaiToken;
+    KAIToken public immutable kaiToken;
 
     // Configuration
     uint256 public proposalDeposit = 10000 * 10**18; // 10,000 KAI
@@ -126,7 +126,7 @@ contract KaiGovernance is AccessControl, ReentrancyGuard, Pausable {
         require(_kaiToken != address(0), "Invalid token");
         require(admin != address(0), "Invalid admin");
 
-        kaiToken = KaiToken(_kaiToken);
+        kaiToken = KAIToken(_kaiToken);
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(EXECUTOR_ROLE, admin);
