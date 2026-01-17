@@ -10,6 +10,63 @@
 
 require('dotenv').config();
 
+// ============================================
+// Environment Validation (Fail Fast)
+// ============================================
+
+const ENV_CONFIG = {
+    // Critical - app won't start without these
+    required: {
+        DATABASE_URL: 'PostgreSQL connection string for data storage'
+    },
+    // Important - features will be disabled without these
+    recommended: {
+        OPENWEATHER_API_KEY: 'Weather data for climate alerts',
+        MPESA_API_KEY: 'M-Pesa payment processing',
+        AFRICASTALKING_API_KEY: 'SMS alert delivery'
+    }
+};
+
+function validateEnvironment() {
+    const missing = [];
+    const warnings = [];
+
+    // Check required variables
+    for (const [key, description] of Object.entries(ENV_CONFIG.required)) {
+        if (!process.env[key]) {
+            missing.push(`  ❌ ${key}: ${description}`);
+        }
+    }
+
+    // Check recommended variables
+    for (const [key, description] of Object.entries(ENV_CONFIG.recommended)) {
+        if (!process.env[key]) {
+            warnings.push(`  ⚠️  ${key}: ${description}`);
+        }
+    }
+
+    // Fail if critical vars missing
+    if (missing.length > 0) {
+        console.error('\n╔═══════════════════════════════════════════════════════════╗');
+        console.error('║          ❌ MISSING REQUIRED CONFIGURATION ❌              ║');
+        console.error('╚═══════════════════════════════════════════════════════════╝\n');
+        console.error('The following environment variables are required:\n');
+        missing.forEach(msg => console.error(msg));
+        console.error('\nSet these in your .env file and restart the server.\n');
+        process.exit(1);
+    }
+
+    // Warn about optional vars
+    if (warnings.length > 0 && process.env.NODE_ENV !== 'test') {
+        console.warn('\n⚠️  Missing recommended configuration:');
+        warnings.forEach(msg => console.warn(msg));
+        console.warn('Some features may be limited.\n');
+    }
+}
+
+// Run validation immediately
+validateEnvironment();
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
