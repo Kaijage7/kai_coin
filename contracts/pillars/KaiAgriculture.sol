@@ -373,6 +373,49 @@ contract KaiAgriculture is AccessControl, ReentrancyGuard, Pausable {
         insurancePool += amount;
     }
 
+    /**
+     * @dev Withdraw excess funds from insurance pool (admin only)
+     * @param to Recipient address
+     * @param amount Amount to withdraw
+     * @notice SECURITY FIX: Added withdrawal function to prevent trapped funds
+     * Only allows withdrawal of excess reserves above a safety threshold
+     */
+    function withdrawFromPool(address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
+        require(to != address(0), "Invalid recipient");
+        require(amount > 0, "Zero amount");
+
+        // Safety check: maintain minimum reserve of 20% of total premiums collected
+        uint256 minimumReserve = (totalPremiumsCollected * 20) / 100;
+        uint256 availableForWithdrawal = insurancePool > minimumReserve
+            ? insurancePool - minimumReserve
+            : 0;
+
+        require(amount <= availableForWithdrawal, "Exceeds available withdrawal (must maintain 20% reserve)");
+
+        insurancePool -= amount;
+        require(kaiToken.transfer(to, amount), "Transfer failed");
+    }
+
+    /**
+     * @dev Emergency withdrawal of any stuck tokens (admin only)
+     * @param token Token address
+     * @param to Recipient address
+     * @param amount Amount to withdraw
+     */
+    function emergencyWithdraw(address token, address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
+        require(to != address(0), "Invalid recipient");
+        require(amount > 0, "Zero amount");
+
+        if (token == address(kaiToken)) {
+            require(kaiToken.transfer(to, amount), "Transfer failed");
+        } else {
+            (bool success, bytes memory data) = token.call(
+                abi.encodeWithSignature("transfer(address,uint256)", to, amount)
+            );
+            require(success && (data.length == 0 || abi.decode(data, (bool))), "Transfer failed");
+        }
+    }
+
     // ============ Admin Functions ============
 
     function setBasePremiumRate(uint256 rate) external onlyRole(DEFAULT_ADMIN_ROLE) {

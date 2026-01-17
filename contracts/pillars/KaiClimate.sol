@@ -219,6 +219,7 @@ contract KaiClimate is AccessControl, ReentrancyGuard, Pausable {
 
     /**
      * @dev Access risk model (pay fee)
+     * @notice SECURITY FIX: Added transfer return value check
      */
     function accessRiskModel(uint256 modelId) external nonReentrant whenNotPaused {
         ClimateRiskModel storage model = riskModels[modelId];
@@ -231,7 +232,8 @@ contract KaiClimate is AccessControl, ReentrancyGuard, Pausable {
         uint256 fundShare = (riskModelAccessFee * 30) / 100;
         uint256 burnShare = riskModelAccessFee - creatorShare - fundShare;
 
-        kaiToken.transfer(model.creator, creatorShare);
+        // SECURITY FIX: Check transfer return value
+        require(kaiToken.transfer(model.creator, creatorShare), "Creator transfer failed");
         adaptationFund += fundShare;
         kaiToken.burn(burnShare);
 
@@ -531,6 +533,42 @@ contract KaiClimate is AccessControl, ReentrancyGuard, Pausable {
     function depositToFund(uint256 amount) external nonReentrant {
         require(kaiToken.transferFrom(msg.sender, address(this), amount), "Transfer failed");
         adaptationFund += amount;
+    }
+
+    /**
+     * @dev Withdraw from adaptation fund (admin only)
+     * @param to Recipient address
+     * @param amount Amount to withdraw
+     * @notice SECURITY FIX: Added withdrawal function to prevent trapped funds
+     */
+    function withdrawFromFund(address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
+        require(to != address(0), "Invalid recipient");
+        require(amount > 0, "Zero amount");
+        require(amount <= adaptationFund, "Exceeds fund balance");
+
+        adaptationFund -= amount;
+        require(kaiToken.transfer(to, amount), "Transfer failed");
+    }
+
+    /**
+     * @dev Emergency withdrawal of any stuck tokens (admin only)
+     * @param token Token address (use KAI token address)
+     * @param to Recipient address
+     * @param amount Amount to withdraw
+     */
+    function emergencyWithdraw(address token, address to, uint256 amount) external onlyRole(DEFAULT_ADMIN_ROLE) nonReentrant {
+        require(to != address(0), "Invalid recipient");
+        require(amount > 0, "Zero amount");
+
+        if (token == address(kaiToken)) {
+            require(kaiToken.transfer(to, amount), "Transfer failed");
+        } else {
+            // For other ERC20 tokens that might get stuck
+            (bool success, bytes memory data) = token.call(
+                abi.encodeWithSignature("transfer(address,uint256)", to, amount)
+            );
+            require(success && (data.length == 0 || abi.decode(data, (bool))), "Transfer failed");
+        }
     }
 
     function pause() external onlyRole(DEFAULT_ADMIN_ROLE) {

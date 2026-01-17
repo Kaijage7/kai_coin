@@ -50,6 +50,12 @@ contract KAI_Oracle is ReentrancyGuard, AccessControl, Pausable {
     uint256 public constant ALERT_COOLDOWN = 6 hours; // Min time between same-type alerts
     uint256 public constant CONFIDENCE_MULTIPLIER = 100; // For percentage calculations
 
+    // SECURITY FIX: Reward pool instead of infinite minting
+    uint256 public constant MAX_DAILY_REWARDS = 100_000 * 10**18; // 100K KAI max rewards per day
+    uint256 public constant MAX_REWARD_PER_ALERT = 10_000 * 10**18; // 10K KAI max per alert
+    uint256 public rewardPool; // Must be funded - no minting!
+    mapping(uint256 => uint256) public dailyRewardsPaid; // day => total rewards paid
+
     // Alert data structure
     struct AlertData {
         uint8 alertType; // 1=flood, 2=drought, 3=locust, etc.
@@ -102,6 +108,7 @@ contract KAI_Oracle is ReentrancyGuard, AccessControl, Pausable {
     );
     event OracleRewarded(address indexed operator, uint256 amount);
     event EmergencyOverride(uint256 indexed alertId, address indexed guardian, string reason);
+    event RewardPoolFunded(address indexed funder, uint256 amount, uint256 newBalance);
 
     /**
      * @dev Constructor - Links to KAI token and staking contracts
@@ -208,6 +215,7 @@ contract KAI_Oracle is ReentrancyGuard, AccessControl, Pausable {
     /**
      * @dev Execute alert (triggers staking burns)
      * @param alertId ID of alert to execute
+     * @notice SECURITY FIX: Rewards are now capped and paid from pool, not minted
      */
     function _executeAlert(uint256 alertId) internal {
         AlertData storage alert = alerts[alertId];
@@ -223,8 +231,28 @@ contract KAI_Oracle is ReentrancyGuard, AccessControl, Pausable {
         // Calculate burn amount (approximate from staking contract logic)
         uint256 totalBurned = _estimateBurnAmount(alert.recipients);
 
-        // Calculate oracle operator reward (3% of burned amount)
+        // SECURITY FIX: Calculate operator reward with caps
         uint256 operatorReward = (totalBurned * ORACLE_REWARD_RATE) / 10000;
+
+        // Cap 1: Max reward per alert
+        if (operatorReward > MAX_REWARD_PER_ALERT) {
+            operatorReward = MAX_REWARD_PER_ALERT;
+        }
+
+        // Cap 2: Daily reward limit
+        uint256 today = block.timestamp / 1 days;
+        uint256 remainingDailyRewards = MAX_DAILY_REWARDS > dailyRewardsPaid[today]
+            ? MAX_DAILY_REWARDS - dailyRewardsPaid[today]
+            : 0;
+
+        if (operatorReward > remainingDailyRewards) {
+            operatorReward = remainingDailyRewards;
+        }
+
+        // Cap 3: Can't exceed reward pool
+        if (operatorReward > rewardPool) {
+            operatorReward = rewardPool;
+        }
 
         // Mark as executed
         alert.executed = true;
@@ -234,8 +262,11 @@ contract KAI_Oracle is ReentrancyGuard, AccessControl, Pausable {
         totalAlertsExecuted++;
         totalConfidenceScore += alert.confidence;
 
-        // Credit operator reward
-        operatorRewards[msg.sender] += operatorReward;
+        // Credit operator reward (capped)
+        if (operatorReward > 0) {
+            operatorRewards[msg.sender] += operatorReward;
+            dailyRewardsPaid[today] += operatorReward;
+        }
 
         emit AlertExecuted(alertId, alert.recipients.length, totalBurned, operatorReward);
     }
@@ -258,18 +289,58 @@ contract KAI_Oracle is ReentrancyGuard, AccessControl, Pausable {
 
     /**
      * @dev Claim oracle operator rewards
+     * @notice SECURITY FIX: Rewards now paid from pool, not minted
+     * This prevents infinite mint attacks - rewards must be funded
      */
     function claimRewards() external nonReentrant {
         uint256 reward = operatorRewards[msg.sender];
         require(reward > 0, "Oracle: no rewards");
+        require(rewardPool >= reward, "Oracle: insufficient reward pool");
 
         operatorRewards[msg.sender] = 0;
+        rewardPool -= reward;
         totalRewardsPaid += reward;
 
-        // Mint rewards from KAI token (requires MINTER_ROLE)
-        kaiToken.oracleMint(msg.sender, reward, 5); // Pillar 5 = AI
+        // SECURITY FIX: Transfer from pool instead of minting
+        // This ensures rewards come from existing tokens, not inflation
+        require(
+            kaiToken.transfer(msg.sender, reward),
+            "Oracle: reward transfer failed"
+        );
 
         emit OracleRewarded(msg.sender, reward);
+    }
+
+    /**
+     * @dev Fund the reward pool (anyone can contribute)
+     * @param amount Amount of KAI to add to reward pool
+     */
+    function fundRewardPool(uint256 amount) external nonReentrant {
+        require(amount > 0, "Oracle: zero amount");
+        require(
+            kaiToken.transferFrom(msg.sender, address(this), amount),
+            "Oracle: transfer failed"
+        );
+
+        rewardPool += amount;
+
+        emit RewardPoolFunded(msg.sender, amount, rewardPool);
+    }
+
+    /**
+     * @dev Get reward pool status
+     */
+    function getRewardPoolStatus() external view returns (
+        uint256 poolBalance,
+        uint256 dailyRemaining,
+        uint256 maxPerAlert
+    ) {
+        uint256 today = block.timestamp / 1 days;
+        uint256 remaining = MAX_DAILY_REWARDS > dailyRewardsPaid[today]
+            ? MAX_DAILY_REWARDS - dailyRewardsPaid[today]
+            : 0;
+
+        return (rewardPool, remaining, MAX_REWARD_PER_ALERT);
     }
 
     /**

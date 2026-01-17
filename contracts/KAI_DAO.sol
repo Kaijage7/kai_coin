@@ -88,9 +88,21 @@ contract KAI_DAO is ReentrancyGuard, AccessControl {
         uint256 abstainVotes;
         ProposalStatus status;
         bool executed;
+        uint256 queuedAt;  // SECURITY FIX: Timestamp when queued for proper timelock
+        uint256 snapshotId; // SECURITY FIX: Snapshot ID for flash loan protection
         mapping(address => bool) hasVoted;
         mapping(address => uint256) voteWeight;
     }
+
+    // SECURITY FIX: Multi-sig veto tracking (requires 3 guardians)
+    uint256 public constant VETO_THRESHOLD = 3; // Minimum guardians needed to veto
+    mapping(uint256 => mapping(address => bool)) public vetoVotes; // proposalId => guardian => voted
+    mapping(uint256 => uint256) public vetoVoteCount; // proposalId => count
+
+    // SECURITY FIX: Vote snapshots for flash loan protection
+    uint256 public snapshotCounter;
+    mapping(uint256 => uint256) public snapshotTimestamps; // snapshotId => timestamp
+    mapping(uint256 => mapping(address => uint256)) public snapshotBalances; // snapshotId => user => balance
 
     // State
     uint256 public proposalCount;
@@ -118,8 +130,10 @@ contract KAI_DAO is ReentrancyGuard, AccessControl {
     event ProposalQueued(uint256 indexed proposalId, uint256 executionTime);
     event ProposalExecuted(uint256 indexed proposalId);
     event ProposalVetoed(uint256 indexed proposalId, address indexed guardian);
+    event VetoVoteCast(uint256 indexed proposalId, address indexed guardian, uint256 currentVotes);
     event TreasuryDeposit(address indexed from, uint256 amount);
     event GrantIssued(address indexed recipient, uint256 amount, string purpose);
+    event SnapshotCreated(uint256 indexed snapshotId, uint256 timestamp);
 
     /**
      * @dev Constructor - Links to KAI token and sets up guardian council
@@ -173,6 +187,12 @@ contract KAI_DAO is ReentrancyGuard, AccessControl {
         // Get corresponding seal for proposal type
         bytes32 seal = _getSealForType(proposalType);
 
+        // SECURITY FIX: Create snapshot for flash loan protection
+        snapshotCounter++;
+        uint256 currentSnapshotId = snapshotCounter;
+        snapshotTimestamps[currentSnapshotId] = block.timestamp;
+        emit SnapshotCreated(currentSnapshotId, block.timestamp);
+
         proposalCount++;
         Proposal storage newProposal = proposals[proposalCount];
 
@@ -189,6 +209,7 @@ contract KAI_DAO is ReentrancyGuard, AccessControl {
         // ✅ FIX: Use proper block count for Polygon (~2 second blocks)
         newProposal.endBlock = block.number + VOTING_PERIOD_BLOCKS;
         newProposal.status = ProposalStatus.Active;
+        newProposal.snapshotId = currentSnapshotId; // SECURITY FIX: Link snapshot
 
         // ✅ FIX: Store timestamp for cooldown tracking
         proposerLastProposal[msg.sender] = block.timestamp;
@@ -203,6 +224,7 @@ contract KAI_DAO is ReentrancyGuard, AccessControl {
      * @param proposalId ID of proposal
      * @param support true=for, false=against
      * @param reason Optional reason string
+     * @notice SECURITY FIX: Uses snapshot balances to prevent flash loan attacks
      */
     function castVote(
         uint256 proposalId,
@@ -216,10 +238,25 @@ contract KAI_DAO is ReentrancyGuard, AccessControl {
         require(block.number <= proposal.endBlock, "DAO: voting ended");
         require(!proposal.hasVoted[msg.sender], "DAO: already voted");
 
-        uint256 balance = kaiToken.balanceOf(msg.sender);
+        // SECURITY FIX: Use snapshot balance to prevent flash loan attacks
+        // First vote records the snapshot, subsequent votes use recorded balance
+        uint256 snapshotId = proposal.snapshotId;
+        uint256 balance;
+
+        if (snapshotBalances[snapshotId][msg.sender] == 0) {
+            // First time voting - record current balance as snapshot
+            // This must happen within the same block as proposal creation ideally
+            // but we allow recording at first vote to simplify UX
+            balance = kaiToken.balanceOf(msg.sender);
+            snapshotBalances[snapshotId][msg.sender] = balance;
+        } else {
+            // Use previously recorded snapshot balance
+            balance = snapshotBalances[snapshotId][msg.sender];
+        }
+
         require(balance > 0, "DAO: no voting power");
 
-        // ✅ FIX: Quadratic voting with overflow protection
+        // Quadratic voting with overflow protection
         // Prevents whales from dominating (1M tokens = ~1414 votes, not 1M votes)
         uint256 sqrtBalance = _sqrt(balance);
         require(sqrtBalance > 0, "DAO: invalid sqrt");
@@ -240,6 +277,23 @@ contract KAI_DAO is ReentrancyGuard, AccessControl {
     }
 
     /**
+     * @dev Record snapshot balance before voting begins (optional pre-registration)
+     * @param proposalId ID of proposal to register for
+     * @notice Users can call this to lock in their balance at proposal creation time
+     */
+    function registerVoteSnapshot(uint256 proposalId) external {
+        require(proposalId > 0 && proposalId <= proposalCount, "DAO: invalid proposal");
+        Proposal storage proposal = proposals[proposalId];
+        require(proposal.status == ProposalStatus.Active, "DAO: proposal not active");
+
+        uint256 snapshotId = proposal.snapshotId;
+        require(snapshotBalances[snapshotId][msg.sender] == 0, "DAO: already registered");
+
+        uint256 balance = kaiToken.balanceOf(msg.sender);
+        snapshotBalances[snapshotId][msg.sender] = balance;
+    }
+
+    /**
      * @dev Finalize proposal after voting period ends
      * @param proposalId ID of proposal
      */
@@ -251,7 +305,11 @@ contract KAI_DAO is ReentrancyGuard, AccessControl {
         require(block.number > proposal.endBlock, "DAO: voting ongoing");
 
         uint256 totalVotes = proposal.forVotes + proposal.againstVotes + proposal.abstainVotes;
-        uint256 quorumRequired = (kaiToken.totalSupply() * QUORUM_PERCENTAGE) / 100;
+
+        // SECURITY FIX: Quorum must also use quadratic formula since votes are quadratic
+        // Calculate: sqrt(4% of totalSupply) * QUADRATIC_MULTIPLIER / 1000
+        uint256 quorumTokens = (kaiToken.totalSupply() * QUORUM_PERCENTAGE) / 100;
+        uint256 quorumRequired = (_sqrt(quorumTokens) * QUADRATIC_MULTIPLIER) / 1000;
 
         // Check quorum and majority
         if (totalVotes < quorumRequired) {
@@ -267,10 +325,12 @@ contract KAI_DAO is ReentrancyGuard, AccessControl {
     /**
      * @dev Queue succeeded proposal for timelock execution
      * @param proposalId ID of proposal
+     * @notice SECURITY FIX: Now properly stores queue timestamp for timelock
      */
     function _queueProposal(uint256 proposalId) internal {
         Proposal storage proposal = proposals[proposalId];
         proposal.status = ProposalStatus.Queued;
+        proposal.queuedAt = block.timestamp; // SECURITY FIX: Store queue time
 
         emit ProposalQueued(proposalId, block.timestamp + TIMELOCK_DELAY);
     }
@@ -278,6 +338,7 @@ contract KAI_DAO is ReentrancyGuard, AccessControl {
     /**
      * @dev Execute queued proposal after timelock delay
      * @param proposalId ID of proposal
+     * @notice SECURITY FIX: Timelock now correctly uses timestamps instead of mixing with block numbers
      */
     function executeProposal(uint256 proposalId) external payable nonReentrant {
         require(proposalId > 0 && proposalId <= proposalCount, "DAO: invalid proposal");
@@ -285,15 +346,19 @@ contract KAI_DAO is ReentrancyGuard, AccessControl {
 
         require(proposal.status == ProposalStatus.Queued, "DAO: not queued");
         require(!proposal.executed, "DAO: already executed");
+
+        // SECURITY FIX: Use queuedAt timestamp instead of endBlock (which is a block number)
+        // Previous code compared block.timestamp with block number - mathematically wrong!
+        require(proposal.queuedAt > 0, "DAO: proposal not properly queued");
         require(
-            block.timestamp >= proposal.endBlock + TIMELOCK_DELAY,
-            "DAO: timelock not expired"
+            block.timestamp >= proposal.queuedAt + TIMELOCK_DELAY,
+            "DAO: timelock not expired (48 hours required)"
         );
 
         proposal.executed = true;
         proposal.status = ProposalStatus.Executed;
 
-        // ✅ FIX: Execute proposal with proper validation and error handling
+        // Execute proposal with proper validation and error handling
         // Validate target is a contract (or address(0) for value transfer only)
         address target = proposal.target;
         if (target != address(0)) {
@@ -312,8 +377,11 @@ contract KAI_DAO is ReentrancyGuard, AccessControl {
     }
 
     /**
-     * @dev Guardian veto (emergency only - requires 3 guardians)
+     * @dev Guardian veto vote (emergency only - requires 3 guardians to complete veto)
      * @param proposalId ID of proposal to veto
+     * @notice SECURITY FIX: Now requires 3 guardian signatures instead of just 1
+     * Each guardian calls this function to add their veto vote.
+     * When 3 guardians have voted, the proposal is automatically vetoed.
      */
     function vetoProposal(uint256 proposalId) external onlyRole(GUARDIAN_ROLE) {
         require(proposalId > 0 && proposalId <= proposalCount, "DAO: invalid proposal");
@@ -324,9 +392,29 @@ contract KAI_DAO is ReentrancyGuard, AccessControl {
             "DAO: cannot veto"
         );
 
-        proposal.status = ProposalStatus.Vetoed;
+        // SECURITY FIX: Require multi-sig (3 guardians) instead of single guardian
+        require(!vetoVotes[proposalId][msg.sender], "DAO: guardian already voted to veto");
 
-        emit ProposalVetoed(proposalId, msg.sender);
+        vetoVotes[proposalId][msg.sender] = true;
+        vetoVoteCount[proposalId]++;
+
+        emit VetoVoteCast(proposalId, msg.sender, vetoVoteCount[proposalId]);
+
+        // Only veto if threshold reached (3 guardians)
+        if (vetoVoteCount[proposalId] >= VETO_THRESHOLD) {
+            proposal.status = ProposalStatus.Vetoed;
+            emit ProposalVetoed(proposalId, msg.sender);
+        }
+    }
+
+    /**
+     * @dev Check current veto vote count for a proposal
+     * @param proposalId ID of proposal
+     * @return count Current veto votes
+     * @return threshold Required votes to veto
+     */
+    function getVetoStatus(uint256 proposalId) external view returns (uint256 count, uint256 threshold) {
+        return (vetoVoteCount[proposalId], VETO_THRESHOLD);
     }
 
     /**

@@ -40,6 +40,10 @@ contract KAIToken is ERC20, ERC20Burnable, Pausable, AccessControl {
     // Pillar-specific burn rates (basis points, 100 = 1%)
     mapping(uint8 => uint16) public pillarBurnRates;
 
+    // SECURITY FIX: Oracle mint rate limiting
+    uint256 public constant ORACLE_MINT_LIMIT_PER_DAY = 10_000_000 * 10**18; // 10M KAI max per day
+    mapping(uint256 => uint256) public dailyOracleMints; // day => amount minted
+
     // Events
     event PillarBurn(address indexed user, uint8 indexed pillarId, uint256 amount, string reason);
     event OracleTriggered(uint8 indexed pillarId, address indexed recipient, uint256 amount);
@@ -75,10 +79,11 @@ contract KAIToken is ERC20, ERC20Burnable, Pausable, AccessControl {
 
     /**
      * @dev Pillar-specific burn for utility flywheel
-     * @param from Address to burn from
+     * @param from Address to burn from (must have approved caller)
      * @param amount Amount to burn
      * @param pillarId Pillar ID (1-7)
      * @param reason Human-readable burn reason
+     * @notice SECURITY FIX: Now requires ERC-20 approval from `from` address
      */
     function burnForPillar(
         address from,
@@ -92,6 +97,14 @@ contract KAIToken is ERC20, ERC20Burnable, Pausable, AccessControl {
 
         // Calculate burn amount based on pillar rate
         uint256 burnAmount = (amount * pillarBurnRates[pillarId]) / 10000;
+
+        // SECURITY FIX: Require approval from token owner before burning
+        // This prevents unauthorized burning of user tokens
+        if (from != msg.sender) {
+            uint256 currentAllowance = allowance(from, msg.sender);
+            require(currentAllowance >= burnAmount, "KAI: burn amount exceeds allowance");
+            _approve(from, msg.sender, currentAllowance - burnAmount);
+        }
 
         // Burn tokens
         _burn(from, burnAmount);
@@ -134,6 +147,7 @@ contract KAIToken is ERC20, ERC20Burnable, Pausable, AccessControl {
      * @param to Recipient address
      * @param amount Amount to mint
      * @param pillarId Pillar ID that triggered the mint
+     * @notice SECURITY FIX: Added daily rate limiting to prevent infinite mint attacks
      */
     function oracleMint(
         address to,
@@ -141,7 +155,17 @@ contract KAIToken is ERC20, ERC20Burnable, Pausable, AccessControl {
         uint8 pillarId
     ) external onlyRole(ORACLE_ROLE) whenNotPaused {
         require(pillarId >= 1 && pillarId <= 7, "KAI: invalid pillar");
+        require(to != address(0), "KAI: mint to zero address");
+        require(amount > 0, "KAI: amount is zero");
         require(totalSupply() + amount <= MAX_SUPPLY, "KAI: max supply exceeded");
+
+        // SECURITY FIX: Daily rate limiting to prevent infinite mint attacks
+        uint256 today = block.timestamp / 1 days;
+        require(
+            dailyOracleMints[today] + amount <= ORACLE_MINT_LIMIT_PER_DAY,
+            "KAI: daily oracle mint limit exceeded"
+        );
+        dailyOracleMints[today] += amount;
 
         _mint(to, amount);
 

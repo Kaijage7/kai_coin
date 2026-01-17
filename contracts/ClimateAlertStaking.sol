@@ -29,6 +29,9 @@ contract ClimateAlertStaking is ReentrancyGuard, AccessControl, Pausable {
     uint256 public constant MIN_STAKE = 100 * 10**18; // 100 KAI minimum
     uint256 public constant ALERT_BURN_RATE = 1000; // 10% burn per alert (basis points)
 
+    // SECURITY FIX: Batch limit to prevent unbounded loop DoS
+    uint256 public constant MAX_RECIPIENTS_PER_ALERT = 500; // Maximum recipients per transaction
+
     // Staking data
     struct Stake {
         uint256 amount;
@@ -161,10 +164,16 @@ contract ClimateAlertStaking is ReentrancyGuard, AccessControl, Pausable {
         require(alertType >= 1 && alertType <= 10, "ClimateStake: invalid type");
         require(recipients.length > 0, "ClimateStake: no recipients");
 
+        // SECURITY FIX: Limit batch size to prevent DoS from unbounded loops
+        require(
+            recipients.length <= MAX_RECIPIENTS_PER_ALERT,
+            "ClimateStake: too many recipients (max 500 per tx)"
+        );
+
         uint256 totalBurned = 0;
         uint256 validRecipients = 0;
 
-        // Process burn for each active staker
+        // Process burn for each active staker (now bounded)
         for (uint256 i = 0; i < recipients.length; i++) {
             address user = recipients[i];
             Stake storage userStake = stakes[user];

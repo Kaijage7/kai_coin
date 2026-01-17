@@ -39,6 +39,15 @@ contract KAIRevenue is AccessControl, ReentrancyGuard, Pausable {
     uint256 public constant SUBSCRIPTION_PREMIUM = 150 * 10**18; // 150 KAI/month
     uint256 public constant SUBSCRIPTION_ENTERPRISE = 500 * 10**18; // 500 KAI/month
 
+    // SECURITY FIX: Fixed API pricing (no user-controlled prices)
+    uint256 public constant API_PRICE_BASIC = 1 * 10**18;     // 1 KAI - Basic query
+    uint256 public constant API_PRICE_STANDARD = 5 * 10**18;  // 5 KAI - Standard query
+    uint256 public constant API_PRICE_PREMIUM = 10 * 10**18;  // 10 KAI - Premium query
+    uint256 public constant API_PRICE_BULK = 20 * 10**18;     // 20 KAI - Bulk/historical
+
+    // API endpoint categories
+    enum APITier { Basic, Standard, Premium, Bulk }
+
     // Subscription types
     enum SubscriptionPlan {
         None,
@@ -201,6 +210,7 @@ contract KAIRevenue is AccessControl, ReentrancyGuard, Pausable {
 
     /**
      * @dev Renew expired subscription
+     * @notice SECURITY FIX: Counter logic fixed - check expiry BEFORE updating
      */
     function renewSubscription() external nonReentrant whenNotPaused {
         Subscription storage sub = subscriptions[msg.sender];
@@ -215,17 +225,22 @@ contract KAIRevenue is AccessControl, ReentrancyGuard, Pausable {
             price = SUBSCRIPTION_ENTERPRISE;
         }
 
+        // SECURITY FIX: Check if subscription was expired BEFORE updating expiresAt
+        bool wasExpired = block.timestamp > sub.expiresAt;
+
         // 💰 COLLECT RENEWAL PAYMENT
         require(
             kaiToken.transferFrom(msg.sender, treasury, price),
             "Payment failed"
         );
 
+        // Now update the subscription
         sub.expiresAt = block.timestamp + 30 days;
         sub.alertsUsed = 0;
         sub.active = true;
 
-        if (block.timestamp > sub.expiresAt) {
+        // SECURITY FIX: Correctly increment if was expired (checked BEFORE update)
+        if (wasExpired) {
             activeSubscribers++; // Was expired, now active again
         }
 
@@ -270,12 +285,36 @@ contract KAIRevenue is AccessControl, ReentrancyGuard, Pausable {
     // ============================================
 
     /**
-     * @dev Pay for API access
+     * @dev Pay for API access with FIXED pricing tiers
      * @param endpoint API endpoint being called
-     * @param price Price for this API call
+     * @param tier The pricing tier for this API call
+     * @notice SECURITY FIX: Removed user-controlled price parameter
+     * Previous version allowed users to set price=0, breaking the revenue model
      */
-    function payForAPICall(string memory endpoint, uint256 price) external nonReentrant whenNotPaused {
-        // 💰 COLLECT API PAYMENT
+    function payForAPICall(string memory endpoint, APITier tier) external nonReentrant whenNotPaused {
+        // SECURITY FIX: Use fixed pricing based on tier, not user input
+        uint256 price;
+        if (tier == APITier.Basic) {
+            price = API_PRICE_BASIC;
+        } else if (tier == APITier.Standard) {
+            price = API_PRICE_STANDARD;
+        } else if (tier == APITier.Premium) {
+            price = API_PRICE_PREMIUM;
+        } else {
+            price = API_PRICE_BULK;
+        }
+
+        // Enterprise subscribers get free API access
+        Subscription memory sub = subscriptions[msg.sender];
+        if (sub.plan == SubscriptionPlan.Enterprise &&
+            sub.active &&
+            block.timestamp < sub.expiresAt) {
+            // Free for enterprise - just track the call
+            emit APICallPaid(msg.sender, endpoint, 0);
+            return;
+        }
+
+        // 💰 COLLECT API PAYMENT at fixed price
         require(
             kaiToken.transferFrom(msg.sender, treasury, price),
             "Payment failed"
@@ -287,6 +326,16 @@ contract KAIRevenue is AccessControl, ReentrancyGuard, Pausable {
 
         emit APICallPaid(msg.sender, endpoint, price);
         emit RevenueCollected(price, totalRevenue);
+    }
+
+    /**
+     * @dev Get API pricing for a tier
+     */
+    function getAPIPrice(APITier tier) external pure returns (uint256) {
+        if (tier == APITier.Basic) return API_PRICE_BASIC;
+        if (tier == APITier.Standard) return API_PRICE_STANDARD;
+        if (tier == APITier.Premium) return API_PRICE_PREMIUM;
+        return API_PRICE_BULK;
     }
 
     // ============================================
